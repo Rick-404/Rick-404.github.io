@@ -1,0 +1,640 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width,initial-scale=1"><title>红队渗透流程 | Rick404</title><meta name="description" content="Summary  情报收集与外网打点  基础设施架构设计部署普通架构：红队人员–》teamserver cs–》目标机缺点：功能未分离、无潜伏通道、回连日志多、灵活性较低 演进架构：DNS&#x2F;HTTP&#x2F;HTTPS分离servertips：1~2cpu 2G内存 10G硬盘，回连数不超过5台，潜伏通道（根据实际目标环境优先） 完整架构： 域名和IP（VPS）teamserver（CS）前置机（redi"><meta name="keywords" content="红队资源"><meta name="author" content="Rick"><meta name="copyright" content="Rick"><meta name="format-detection" content="telephone=no"><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://yoursite.com/2019/08/22/tips2/"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//fonts.googleapis.com" crossorigin="crossorigin"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><meta property="og:type" content="article"><meta property="og:title" content="红队渗透流程"><meta property="og:url" content="http://yoursite.com/2019/08/22/tips2/"><meta property="og:site_name" content="Rick404"><meta property="og:description" content="Summary  情报收集与外网打点  基础设施架构设计部署普通架构：红队人员–》teamserver cs–》目标机缺点：功能未分离、无潜伏通道、回连日志多、灵活性较低 演进架构：DNS&#x2F;HTTP&#x2F;HTTPS分离servertips：1~2cpu 2G内存 10G硬盘，回连数不超过5台，潜伏通道（根据实际目标环境优先） 完整架构： 域名和IP（VPS）teamserver（CS）前置机（redi"><meta property="og:image" content="https://ftp.bmp.ovh/imgs/2020/07/0c864ac3a78d885f.png"><meta property="article:published_time" content="2019-08-22T09:53:26.000Z"><meta property="article:modified_time" content="2020-08-12T05:38:17.617Z"><meta name="twitter:card" content="summary"><script>var activateDarkMode = function () {
+  document.documentElement.setAttribute('data-theme', 'dark')
+  if (document.querySelector('meta[name="theme-color"]') !== null) {
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', '#000')
+  }
+}
+var activateLightMode = function () {
+  document.documentElement.setAttribute('data-theme', 'light')
+  if (document.querySelector('meta[name="theme-color"]') !== null) {
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', '#fff')
+  }
+}
+
+var getCookies = function (name) {
+  const value = `; ${document.cookie}`
+  const parts = value.split(`; ${name}=`)
+  if (parts.length === 2) return parts.pop().split(';').shift()
+}
+
+var autoChangeMode = '1'
+var t = getCookies('theme')
+if (autoChangeMode === '1') {
+  var isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+  var isLightMode = window.matchMedia('(prefers-color-scheme: light)').matches
+  var isNotSpecified = window.matchMedia('(prefers-color-scheme: no-preference)').matches
+  var hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+
+  if (t === undefined) {
+    if (isLightMode) activateLightMode()
+    else if (isDarkMode) activateDarkMode()
+    else if (isNotSpecified || hasNoSupport) {
+      console.log('You specified no preference for a color scheme or your browser does not support it. I Schedule dark mode during night time.')
+      var now = new Date()
+      var hour = now.getHours()
+      var isNight = hour <= 6 || hour >= 18
+      isNight ? activateDarkMode() : activateLightMode()
+    }
+    window.matchMedia('(prefers-color-scheme: dark)').addListener(function (e) {
+      if (Cookies.get('theme') === undefined) {
+        e.matches ? activateDarkMode() : activateLightMode()
+      }
+    })
+  } else if (t === 'light') activateLightMode()
+  else activateDarkMode()
+} else if (autoChangeMode === '2') {
+  now = new Date()
+  hour = now.getHours()
+  isNight = hour <= 6 || hour >= 18
+  if (t === undefined) isNight ? activateDarkMode() : activateLightMode()
+  else if (t === 'light') activateLightMode()
+  else activateDarkMode()
+} else {
+  if (t === 'dark') activateDarkMode()
+  else if (t === 'light') activateLightMode()
+}</script><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Titillium+Web&amp;display=swap"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  noticeOutdate: undefined,
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  bookmark: {
+    message_prev: '按',
+    message_next: '键将本页加入书签'
+  },
+  runtime_unit: '天',
+  runtime: true,
+  copyright: undefined,
+  ClickShowText: undefined,
+  medium_zoom: true,
+  fancybox: false,
+  Snackbar: undefined,
+  justifiedGallery: {
+    js: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/js/jquery.justifiedGallery.min.js',
+    css: 'https://cdn.jsdelivr.net/npm/justifiedGallery/dist/css/justifiedGallery.min.css'
+  },
+  baiduPush: false,
+  highlightCopy: true,
+  highlightLang: true,
+  isPhotoFigcaption: false,
+  islazyload: true,
+  isanchor: false    
+}</script><script id="config_change">var GLOBAL_CONFIG_SITE = { 
+  isPost: true,
+  isHome: false,
+  isHighlightShrink: false,
+  isSidebar: true,
+  postUpdate: '2020-08-12 13:38:17'
+}</script><noscript><style>
+#nav {
+  opacity: 1
+}
+.justified-gallery img {
+  opacity: 1
+}
+</style></noscript><meta name="generator" content="Hexo 5.0.2"></head><body><div id="loading-box"><div class="loading-left-bg"></div><div class="loading-right-bg"></div><div class="spinner-box"><div class="configure-border-1"><div class="configure-core"></div></div><div class="configure-border-2"><div class="configure-core"></div></div><div class="loading-word">加载中...</div></div></div><div id="mobile-sidebar"><div id="menu_mask"></div><div id="mobile-sidebar-menus"><div class="mobile_author_icon"><img class="avatar-img" data-lazy-src="/img/avatar.png" onerror="onerror=null;src='/img/friend_404.gif'" alt="avatar"/></div><div class="mobile_post_data"><div class="mobile_data_item is-center"><div class="mobile_data_link"><a href="/archives/"><div class="headline">文章</div><div class="length_num">9</div></a></div></div><div class="mobile_data_item is-center">      <div class="mobile_data_link"><a href="/tags/"><div class="headline">标签</div><div class="length_num">5</div></a></div></div></div><hr/><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div></div></div><div id="body-wrap"><div id="sidebar"><i class="fas fa-arrow-right on" id="toggle-sidebar"></i><div class="sidebar-toc"><div class="sidebar-toc__title">目录</div><div class="sidebar-toc__progress"><span class="progress-notice">你已经读了</span><span class="progress-num">0</span><span class="progress-percentage">%</span><div class="sidebar-toc__progress-bar">     </div></div><div class="sidebar-toc__content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#Summary"><span class="toc-number">1.</span> <span class="toc-text">Summary</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%83%85%E6%8A%A5%E6%94%B6%E9%9B%86%E4%B8%8E%E5%A4%96%E7%BD%91%E6%89%93%E7%82%B9"><span class="toc-number">2.</span> <span class="toc-text">情报收集与外网打点</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9F%BA%E7%A1%80%E8%AE%BE%E6%96%BD%E6%9E%B6%E6%9E%84%E8%AE%BE%E8%AE%A1%E9%83%A8%E7%BD%B2"><span class="toc-number">3.</span> <span class="toc-text">基础设施架构设计部署</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%82%AE%E4%BB%B6%E9%92%93%E9%B1%BC%E4%B9%8B%E5%89%8D%E6%9C%9F%E4%BF%A1%E6%81%AF%E6%94%B6%E9%9B%86%E4%B8%8E%E4%BE%A6%E6%9F%A5"><span class="toc-number">4.</span> <span class="toc-text">邮件钓鱼之前期信息收集与侦查</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%92%93%E9%B1%BC%E6%A0%B7%E6%9C%AC%E5%88%B6%E4%BD%9C"><span class="toc-number">5.</span> <span class="toc-text">钓鱼样本制作</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%86%85%E7%BD%91%E6%A8%AA%E5%90%91%E7%A7%BB%E5%8A%A8"><span class="toc-number">6.</span> <span class="toc-text">内网横向移动</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%96%87%E4%BB%B6%E6%84%9F%E6%9F%93%E4%B8%8E%E6%A8%AA%E5%90%91%E7%A7%BB%E5%8A%A8"><span class="toc-number">7.</span> <span class="toc-text">文件感染与横向移动</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%AE%9E%E6%88%98%E6%A1%88%E4%BE%8B"><span class="toc-number">8.</span> <span class="toc-text">实战案例</span></a></li></ol></div></div></div><header class="post-bg" id="page-header" style="background-image: url(https://ftp.bmp.ovh/imgs/2020/07/0c864ac3a78d885f.png)"><nav id="nav"><span class="pull-left" id="blog_name"><a class="blog_title" id="site-name" href="/">Rick404</a></span><span class="pull-right menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> Home</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> Archives</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> Tags</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fas fa-folder-open"></i><span> Categories</span></a></div></div><span class="toggle-menu close"><a class="site-page"><i class="fas fa-bars fa-fw"></i></a></span></span></nav><div id="post-info"><div id="post-title"><div class="posttitle">红队渗透流程</div></div><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2019-08-22T09:53:26.000Z" title="发表于 2019-08-22 17:53:26">2019-08-22</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2020-08-12T05:38:17.617Z" title="更新于 2020-08-12 13:38:17">2020-08-12</time></span></div><div class="meta-secondline"> <span class="post-meta-separator">|</span><span class="post-meta-pv-cv"><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">阅读量:</span><span id="busuanzi_value_page_pv"></span></span></div></div></div></header><main class="layout_post" id="content-inner"><article id="post"><div class="post-content" id="article-container"><h2 id="Summary"><a href="#Summary" class="headerlink" title="Summary"></a>Summary</h2><img src= "/img/143.gif" data-lazy-src="/2019/08/22/tips2/summary.jpeg" class="" title="This is an example image">
+
+<h2 id="情报收集与外网打点"><a href="#情报收集与外网打点" class="headerlink" title="情报收集与外网打点"></a>情报收集与外网打点</h2><img src= "/img/143.gif" data-lazy-src="/2019/08/22/tips2/search.jpeg" class="" title="This is an example image">
+
+<h2 id="基础设施架构设计部署"><a href="#基础设施架构设计部署" class="headerlink" title="基础设施架构设计部署"></a>基础设施架构设计部署</h2><p>普通架构：红队人员–》teamserver cs–》目标机<br>缺点：功能未分离、无潜伏通道、回连日志多、灵活性较低</p>
+<p>演进架构：DNS/HTTP/HTTPS分离server<br>tips：1~2cpu 2G内存 10G硬盘，回连数不超过5台，潜伏通道（根据实际目标环境优先）</p>
+<p>完整架构： 域名和IP（VPS）teamserver（CS）前置机（redictor）<br>CS -》teamservers 1/2/3/… 前置层（SMTP/PAYLOAD/C2/隐蔽C2）</p>
+<img src= "/img/143.gif" data-lazy-src="/2019/08/22/tips2/arch-design.jpeg" class="" title="This is an example image">
+
+<ul>
+<li><p>选择域名</p>
+<img src= "/img/143.gif" data-lazy-src="/2019/08/22/tips2/15663532496100.jpg" class="" title="This is an example image">
+<ul>
+<li>抢注过期域名 expireddomains.net  DELETE DOMAIN</li>
+<li>tips1: 不要包含世界大厂和杀毒厂商相关的域名，以及和目标相关的域名</li>
+<li>tips2：注册目标相关区域常见的域名，记得开隐私保护</li>
+<li>其他：<a target="_blank" rel="noopener" href="http://www.freshdrop.com/">www.freshdrop.com</a> <a target="_blank" rel="noopener" href="http://www.domcop.com/">www.domcop.com</a></li>
+<li>tips3：检查域名是否被分类，金融、医疗、电商、航空、旅游 great</li>
+<li>tips4：去VT、微步检查，域名是否被标黑</li>
+<li>tips5：举报滥用规则仔细阅读（freenom 慎用）</li>
+</ul>
+</li>
+<li><p>培养域名（养号）</p>
+<ul>
+<li>搭建正常域名，提交至各安全厂商给站点分类</li>
+<li>tips1：把域名A记录解析到大厂ip，使用时候再解析到C2，不用时候解析回大厂ip</li>
+<li>tips2：VT 自评， alex 自评</li>
+</ul>
+</li>
+<li><p>域名解析检测</p>
+</li>
+<li><p>域名分类检测</p>
+<ul>
+<li>domaincheck：</li>
+</ul>
+</li>
+<li><p>IP检测</p>
+<ul>
+<li>外网IP，通过情报站看是否被标黑</li>
+<li>使用CDN隐藏真实IP（部分安全厂商会拦截CDN IP）</li>
+</ul>
+</li>
+<li><p>借鸡生蛋，</p>
+<ul>
+<li>subdomain takeover：高信誉域名A解析B -》</li>
+<li>高信誉肉鸡做前置转发</li>
+</ul>
+</li>
+<li><p>C2工具</p>
+<ul>
+<li>CS 3.14<ul>
+<li>自定义流量特征：DNS/HTTP/HTTPS/SMB和TCP</li>
+<li>Payload加载流程：shellcode/Loader/Stageless/beacon</li>
+<li>DNS：如果用到dns通道默认参数必须修改（容易被设备检测），不要用DNS做数据通道</li>
+<li>HTTP（S）：不要在uri中的文件后缀设置js、css等静态文件，效果：付费证书&gt;免费证书&gt;自签名证书 （Let’s Encrypt 免费 3个月过期，开自动续）</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Redirector</p>
+<ul>
+<li>DNS socat|iptables|ssh（tmux和screen选一个）</li>
+<li>Apache|Nginx</li>
+<li>Tips：<ul>
+<li>建议使用<strong>多个判断</strong>过来请求，拒绝使用默认uri，对抗全网C2扫描</li>
+<li>仅允许目标相关IP访问，对抗云沙盒</li>
+<li>限定访问时间段，只在某个时间段请求payload</li>
+<li>不要把非payload的uri重定向到google等高信誉域名</li>
+<li><strong>建议</strong>：在<a target="_blank" rel="noopener" href="http://www.aaa.com搭建来养域名,使用c2.aaa.com的二级域名做c2/">www.aaa.com搭建来养域名，使用c2.aaa.com的二级域名做C2</a></li>
+</ul>
+</li>
+<li>Domain Fronting（隐藏IP、域名的方式）<ul>
+<li>Google App Engine| Amazon |Azure|Aliyun CDN</li>
+<li>可见层：DNS、TLS</li>
+<li>不可见层：HTTPS</li>
+<li>URL（高信誉） SNI（高信誉） HOST(C2)</li>
+<li><a target="_blank" rel="noopener" href="https://github.com/vysecurity/DomainFrontingLists">https://github.com/vysecurity/DomainFrontingLists</a></li>
+<li>代替方案：HTTP pipelining（ &gt;http 1.1 ）<ul>
+<li>和 domain fronting 效果相同</li>
+<li>利用同一个tcp连接发送不同的host的http包</li>
+<li>tips：good domain + bad domain 包一层同时发过去</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>第三方服务用作C2<ul>
+<li>Office365、Pastebin、Slack、Facebook、Dropbox、Gmail、Twitter..</li>
+<li>需要硬编码到第三方服务</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>邮件钓鱼（SMTP）</p>
+<ul>
+<li>域名：同C2域名选择</li>
+<li>高信誉的邮件发送者：Mailchimp、Sendgrid</li>
+<li>正确配置SPF、DKIM\DMARC</li>
+<li>SSL证书</li>
+<li>发送时间和频率</li>
+<li>一键部署</li>
+<li>钓鱼邮件框架：Gophish (<a target="_blank" rel="noopener" href="https://github.com/gophish/gophish">https://github.com/gophish/gophish</a>)</li>
+</ul>
+</li>
+<li><p>隐蔽性和安全性</p>
+<ul>
+<li>权限最小化：使用iptalbes限定组件通讯，SSH进行端口转发</li>
+<li>Teamserver：限制端口只能本地访问，限制beacon监听端口只能redirector访问</li>
+<li>Tips：VPS容易被GFW拦截？ <ul>
+<li>解决方案：V2ray + Nginx + CLoudflare + Freenom+ Websocket 搭建代理</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>基础设施监控系统</p>
+<ul>
+<li>记录完整日志，设置告警</li>
+<li>自动化部署 LuWu（<a target="_blank" rel="noopener" href="https://github.com/QAX-A-Team/LuWu%EF%BC%89">https://github.com/QAX-A-Team/LuWu）</a></li>
+<li>日志中心</li>
+</ul>
+</li>
+</ul>
+<h2 id="邮件钓鱼之前期信息收集与侦查"><a href="#邮件钓鱼之前期信息收集与侦查" class="headerlink" title="邮件钓鱼之前期信息收集与侦查"></a>邮件钓鱼之前期信息收集与侦查</h2><ul>
+<li>面临的技术挑战：<ul>
+<li>邮件网关 mail gateway</li>
+<li>浏览器</li>
+<li>EDR、IDS</li>
+</ul>
+</li>
+<li>Mail Gateway<ul>
+<li>ANTI-SPAM<ul>
+<li>SPF</li>
+<li>DKIM</li>
+<li>新注册域名</li>
+<li>生僻域名后缀</li>
+<li>敏感关键字</li>
+</ul>
+</li>
+<li>特性：<ul>
+<li>邮件退信默认开启</li>
+<li>MTA默认不开启 Recipient Validation</li>
+</ul>
+</li>
+<li>结论：当我们发送一封钓鱼邮件给一个不存在的邮箱账户时，如果能收到NDR，证明钓鱼邮件通过了邮件网关安全审查（BACKSCATTER ATTACK）</li>
+<li>BYPASS ANTI-SPAM<ul>
+<li>通过上述结论，探测，fuzzing ANTI-SPAM 引擎规则</li>
+<li>稳定触发NDR的办法：<ul>
+<li>正文大于10M</li>
+<li>收件人超过5000个</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>BYPASS ANTI-MALWARE</li>
+<li>NDR</li>
+</ul>
+</li>
+<li>总结<img src= "/img/143.gif" data-lazy-src="/2019/08/22/tips2/RTsteps.jpeg" class="" title="This is an example image">
+
+</li>
+</ul>
+<h2 id="钓鱼样本制作"><a href="#钓鱼样本制作" class="headerlink" title="钓鱼样本制作"></a>钓鱼样本制作</h2><ul>
+<li><p>钓鱼邮件类型</p>
+<ul>
+<li>恶意的chm文档：利用easy，但目前比较难过杀软，免杀效果差</li>
+<li>带有恶意宏代码的office文档：易于混淆（结合图片模糊之类），但需要手动开宏，进程链可疑</li>
+<li>白加黑钓鱼：利用带签名的白程序，通过DLL劫持的方案加载恶意DLL；比较容易过AV，但需要解压执行</li>
+<li>LNK文件钓鱼：链接对象是Powershell，进程链完善</li>
+<li>PPT钓鱼样本：PPT超链接，弹出“安全声明”，不用启动宏，但必须全屏播放，启用才执行；不推荐使用</li>
+<li>漏洞利用的钓鱼邮件：效率高，同样成本也高</li>
+</ul>
+</li>
+<li><p>写工具自动化生成恶意lnk，关键函数：</p>
+<ul>
+<li>IShellLink::SetIconLocation()</li>
+<li>IShellLink::SetShowCmd() 窗口显示</li>
+<li>IShellLink::SetArguments()</li>
+<li>IShellLink::SetPath()</li>
+<li>…</li>
+</ul>
+</li>
+<li><p>LNK钓鱼邮件制作</p>
+<ul>
+<li>钓鱼简历的编写：内容可选浮夸，让HR打开看完后大概率删除，防止提给技术人员</li>
+<li>LNK图标的显示：改成各个系统都能默认显示的通用图标</li>
+<li>如何隐藏行为：SetShowCmd() 最小化窗口</li>
+<li>Word文档存放：<ul>
+<li>联网下载Word文档<ul>
+<li>(New-Object System.Net.WebClient).DownloadFile(url, file_path);</li>
+<li>数据还原引擎<ul>
+<li>协议内容还原：tcp、http、smtp</li>
+<li>文件内容还原：office、pdf、zip</li>
+<li>加壳程序还原：upx</li>
+<li>加密算法数据还原：base64</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>本地释放Word文档<ul>
+<li>将Word塞到COMMAND_LINE_ARGUMENTS<ul>
+<li>ARGUMENT用于LNK中存储命令行参数</li>
+<li>StringData结构，CountCharacters </li>
+<li>IShellLink::SetArguments()</li>
+<li>塞入数据的最大值是 explorer.exe 对命令行参数长度的限制</li>
+<li>实测得出 0x7FC2（31KB）</li>
+</ul>
+</li>
+<li>将Word塞到lnk文件的尾部（<strong>推荐使用</strong>）<ul>
+<li>尾部可以追加任意大小的word、PE、PowerShell</li>
+<li>select -last 1 定位到最后一个对象，以“\n”划分对象</li>
+<li>select -index 1 也可以</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>杀软对抗<ul>
+<li>短文件名 POWERS~1.EXE          </li>
+<li>代码混淆 参考赛门铁克的paper</li>
+<li>安全类进程检测<ul>
+<li>虚拟机-取证工具-杀软检测-调试器</li>
+<li>常规手法<ul>
+<li>进程名检测</li>
+<li>窗口标题检测</li>
+</ul>
+</li>
+<li>新姿势<ul>
+<li>遍历进程，获取进程对应的版权信息，与黑名单列表比对</li>
+<li>优点：升级版本也不变，通用</li>
+</ul>
+</li>
+<li>如何根据PID获取进程的全路径：ProcessExplorer</li>
+<li>x86不太可行，x64可以 </li>
+<li>绕过PCHunter 0RING hook</li>
+<li>检测后行为，通知攻击者，及时善后处理</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="内网横向移动"><a href="#内网横向移动" class="headerlink" title="内网横向移动"></a>内网横向移动</h2><ul>
+<li>内网侦查<ul>
+<li>经典主被动内网侦查方式<ul>
+<li>主动扫描<ul>
+<li>设备资产识别</li>
+<li>可用服务采集</li>
+<li>脚本检测</li>
+</ul>
+</li>
+<li>被动搜集<ul>
+<li>监听广播消息</li>
+</ul>
+</li>
+<li>雷区警示<ul>
+<li>风险面：Network ACL封锁、受控主机HIDS、HoneyPot、NIDS</li>
+</ul>
+</li>
+<li>方法对比 </li>
+</ul>
+</li>
+</ul>
+</li>
+<li>域内信息侦查  * 类域 *  *nix * Windows AD<ul>
+<li>定位域控（域内主机） <ul>
+<li>时间服务器<ul>
+<li>net time /domain </li>
+<li>w32tm /query</li>
+</ul>
+</li>
+<li>DNS服务器<ul>
+<li>Get-DnsClientServerAddress 查询本机 DNS SERVER 设置</li>
+<li>向DNS server 查询 Domain Name A记录对应地址</li>
+</ul>
+</li>
+<li>域控定位器<ul>
+<li>DC Locator Process</li>
+<li>产生DNS查询，沿用DC Locator的机制很安全 </li>
+<li>Kerberos认证，KDC</li>
+<li>GC</li>
+<li>查询工具<ul>
+<li>nltest 提取域控信息的过程</li>
+<li>net</li>
+<li>dsquery 通过对LDAP进行查询</li>
+</ul>
+</li>
+<li>dsquery/ADSISearcher使用明文的LDAP协议，容易被IDS捕获</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>定位域控（域外主机）<ul>
+<li>DNS排查<ul>
+<li>Scan UDP/53</li>
+<li>Query DNS FQDN from DNS</li>
+<li>Query Locators from DNS </li>
+</ul>
+</li>
+<li>LDAP（S）&amp; GC（S）<ul>
+<li>扫描端口，利用特性筛查域名</li>
+<li>匿名读取部分LDAP元数据</li>
+<li>读取LDAP证书信息</li>
+<li>GC服务 查询 TCP/3268 TCP/3269 </li>
+<li>防御：可以关闭匿名绑定</li>
+</ul>
+</li>
+<li>查询LDAP（S）服务<ul>
+<li>ADexplorer：GUI，一些cmdlet  </li>
+<li>Get-ADUser</li>
+<li>Powerview：大量cmdlet</li>
+</ul>
+</li>
+<li>Kerberos<ul>
+<li>AS-REQ &amp; AS-REP</li>
+<li>KDC TGT票据</li>
+<li>基于AS协议的用户枚举<ul>
+<li>KERBEROSUSERENUM（a-team github）</li>
+<li>MSF模块</li>
+</ul>
+</li>
+<li>ASREPROAST <ul>
+<li>Session Key，使用用户的NTHASH加密</li>
+<li>John/HashCat 可以进行离线破解</li>
+</ul>
+</li>
+<li>SPN（Service Principal Name）域对象的属性，对象是机器/用户，必须设置 </li>
+<li>TGS-REQ &amp; TGS-REP <ul>
+<li>服务票据</li>
+<li>Service Ticket </li>
+<li>结论：普通域账号申请服务票据后可以对账号离线破解</li>
+<li>KERBEROAST攻击（基于上述结论）<ul>
+<li>Rubeus.exe</li>
+<li>PowerView</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>HUNT DOMAIN ADMIN<ul>
+<li>特定用户登录会话<ul>
+<li>远程会话枚举<ul>
+<li>NetSessionEnum（SMB会话） </li>
+<li>NetWkstaUserEnum（交互登录会话）新版本系统需要 admin privilige</li>
+</ul>
+</li>
+<li>远程用户枚举<ul>
+<li>场景：一些同域管理账号同名的本地账号可能是同一人创建</li>
+<li>SAMR 查询组和成员信息（注：Win 10后没有admin无法枚举）</li>
+<li>LSARPC 查询SID相关</li>
+</ul>
+</li>
+<li>远程登录枚举<ul>
+<li>交互式登陆：主要指Console和RDP登陆的方式</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>获取主机权限：Vul RBCD &amp; RPRN</li>
+<li>提取遗留的凭据: Powerview Mimikatz </li>
+<li>得到用户权限</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>横向移动<ul>
+<li>MS-RPC<ul>
+<li>WMI：基于DCOM TCP/135 明文传输</li>
+<li>PSEXEC：（tips：使用impacket工具 psexec.py 区别在于目标支持SMB3.0默认开启加密）</li>
+<li>远程计划任务</li>
+<li>DCOM：远程调用的COM组件 TCP/445 + Random port dcomexec.py</li>
+</ul>
+</li>
+<li>Kerberos委派<ul>
+<li>概念：是一种让服务有能力以来访用户身份访问其他服务的认证机制</li>
+<li>无限制委派：default设置仅域控可以无限制委派<ul>
+<li>S4U2SELF</li>
+<li>PRINTER BUG：Printer Spooler服务SSRF</li>
+<li>无限制委派+S4U2SELF+PRINTER 任意域控</li>
+</ul>
+</li>
+<li>约束委派<ul>
+<li>S4U2PROXY</li>
+</ul>
+</li>
+<li>基于资源的委派（RBCD） 目前杀伤力最大的委派<ul>
+<li>继承S4U2SELF、S4U2PROXY</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>域权限维持<ul>
+<li>主机权限维持（常见类型，不展开）</li>
+<li>域权限维持<ul>
+<li>SPN<ul>
+<li>针对账户进行，参考前面</li>
+</ul>
+</li>
+<li>黄金票据<ul>
+<li>用krbtgt加密TGT，TGT加密使用该账户的key作为密钥</li>
+<li>使用默认参数创建的金票过期时间很长，mimikatz</li>
+<li>DCSync拉取域内账户的hash/key</li>
+<li>检测点：<ul>
+<li>krbtgt key，修改krbtgt密码两次，分析4769日志</li>
+<li>日志分析</li>
+<li>IDS规则，过期时间，算法等</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>白银票据<ul>
+<li>SRVS的相关key加密</li>
+<li>检测点：<ul>
+<li>PAC信息验证</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>受限委派</li>
+<li>RBCD</li>
+<li>域组策略</li>
+<li>LAPS</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="文件感染与横向移动"><a href="#文件感染与横向移动" class="headerlink" title="文件感染与横向移动"></a>文件感染与横向移动</h2><ul>
+<li>文件感染<ul>
+<li>意义</li>
+<li>场景<ul>
+<li>公司软件库供应链，类似“驱动人生”</li>
+<li>感染远程共享文件</li>
+<li>外界设备感染，如U盘、移动硬盘</li>
+<li>3389挂载盘到服务器</li>
+<li>邮件感染，插入恶意宏</li>
+<li>流量劫持，感染传输中的文件</li>
+</ul>
+</li>
+<li>方式<ul>
+<li>PE感染</li>
+<li>LNK感染</li>
+<li>Office感染       </li>
+</ul>
+</li>
+<li>常规PE感染<ul>
+<li>给exe添加一个导入函数，DllMain中写恶意代码，工具StudyPE</li>
+<li>把恶意代码插入到PE中，修改OEP，重建PE<ul>
+<li>OEP内某处跳转到恶意代码 </li>
+<li>修改OEP指向恶意代码</li>
+</ul>
+</li>
+<li>对抗思路<ul>
+<li>DLL加载</li>
+<li>OEP jump</li>
+<li><strong>利用TLS（线程局部存储）回调</strong></li>
+</ul>
+</li>
+</ul>
+</li>
+<li>TLS感染<ul>
+<li>TLS回调，反调试；把恶意代码放在TLS，不需要修改OEP</li>
+<li>TLS数据结构</li>
+<li>TLS感染总体流程：搜寻节间隙 - 修改录数据目 - 构建TLS目录 TLS回调函数 - 重建PE - 恶意文件释放</li>
+</ul>
+</li>
+<li>LNK文件<ul>
+<li>图标如何保持不变？<ul>
+<li>IShellLink::SetIconLocation()把exe设置为当前lnk的图标</li>
+</ul>
+</li>
+<li>恶意代码正常拉起原程序<ul>
+<li>借助rundll32.exe </li>
+</ul>
+</li>
+<li>场景：权限维持、横向移动</li>
+</ul>
+</li>
+<li>Office文件感染 <ul>
+<li>.docx .docm（宏文件） 可以改为 .doc</li>
+<li>目标：把.docx转换为带恶意宏的.docm或.doc</li>
+</ul>
+</li>
+<li>杀软对抗<ul>
+<li>修改文件关联<ul>
+<li>.docm 改为.doc，对抗针对后缀.docm 的检测</li>
+<li>修改宏关联文件，对抗依赖文件名or类型检测</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="实战案例"><a href="#实战案例" class="headerlink" title="实战案例"></a>实战案例</h2><p>   略</p>
+<p>本文转载至 <a target="_blank" rel="noopener" href="https://github.com/Mel0day/RedTeam-BCS">https://github.com/Mel0day/RedTeam-BCS</a></p>
+</div><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">Rick</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="http://yoursite.com/2019/08/22/tips2/">http://yoursite.com/2019/08/22/tips2/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="http://yoursite.com" target="_blank">Rick404</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E7%BA%A2%E9%98%9F%E8%B5%84%E6%BA%90/">红队资源</a></div><div class="post_share"><div class="social-share" data-image="https://ftp.bmp.ovh/imgs/2020/07/0c864ac3a78d885f.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js/dist/css/share.min.css"><script src="https://cdn.jsdelivr.net/npm/social-share.js/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><div class="prev-post pull-left"><a href="/2019/08/23/tips3/"><img class="prev-cover" data-lazy-src="https://ftp.bmp.ovh/imgs/2020/08/54f1722bae09333e.jpg" onerror="onerror=null;src='/img/404.jpg'"><div class="pagination-info"><div class="label">上一篇</div><div class="prev_info">权限维持-Hook-PasswordChangeNotify</div></div></a></div><div class="next-post pull-right"><a href="/2019/08/21/tips1/"><img class="next-cover" data-lazy-src="https://ftp.bmp.ovh/imgs/2020/08/1851b81a39dff17e.png" onerror="onerror=null;src='/img/404.jpg'"><div class="pagination-info"><div class="label">下一篇</div><div class="next_info">内网渗透 Tips1</div></div></a></div></nav><hr/><div id="post-comment"><div class="comment-head"><div class="comment-headline"><i class="fas fa-comments fa-fw"></i><span> 评论</span></div></div><div class="comment-wrap"><div><div class="vcomment" id="vcomment"></div></div></div></div></article></main><footer id="footer" data-type="color"><div id="footer-wrap"><div class="copyright">&copy;2019 - 2020 By Rick</div><div class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly</a></div><div class="footer_custom_text">Hi, welcome to my <a target="_blank" rel="noopener" href="https://rick-404.github.io/">blog</a>!</div></div></footer></div><section id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="font_plus" type="button" title="放大字体"><i class="fas fa-plus"></i></button><button id="font_minus" type="button" title="缩小字体"><i class="fas fa-minus"></i></button><button id="darkmode" type="button" title="浅色和深色模式转换"><i class="fas fa-adjust"></i></button></div><div id="rightside-config-show"><button id="rightside_config" type="button" title="设置"><i class="fas fa-cog"></i></button><a id="to_comment" href="#post-comment" title="直达评论"><i class="fas fa-comments"></i></a><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><i class="fas fa-arrow-up"></i></button></div></section><div><script src="https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js"></script><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom/dist/medium-zoom.min.js"></script><script src="https://cdn.jsdelivr.net/npm/instant.page/instantpage.min.js" type="module" defer></script><script src="https://cdn.jsdelivr.net/npm/vanilla-lazyload/dist/lazyload.iife.min.js" async></script><script>var endLoading = function () {
+  document.body.style.overflow = 'auto';
+  document.getElementById('loading-box').classList.add("loaded")
+}
+window.addEventListener('load',endLoading)</script><div class="js-pjax"><script>function loadValine () {
+  function initValine () {
+    window.valine = new Valine({
+      el: '#vcomment',
+      appId: 'hS0g2rnqFSuCAJTGTJHjnpOR-MdYXbMMI',
+      appKey: 'FL7EWhj5UCqcgGrzeveushyb',
+      placeholder: '凉快凉快呗......',
+      avatar: 'monsterid',
+      meta: 'nick,mail,link'.split(','),
+      pageSize: '10',
+      lang: 'zh-CN',
+      recordIP: false,
+      serverURLs: '',
+      emojiCDN: '//i0.hdslb.com/bfs/emote/',
+      emojiMaps: {"tv_doge":"6ea59c827c414b4a2955fe79e0f6fd3dcd515e24.png","tv_亲亲":"a8111ad55953ef5e3be3327ef94eb4a39d535d06.png","tv_偷笑":"bb690d4107620f1c15cff29509db529a73aee261.png","tv_再见":"180129b8ea851044ce71caf55cc8ce44bd4a4fc8.png","tv_冷漠":"b9cbc755c2b3ee43be07ca13de84e5b699a3f101.png","tv_发怒":"34ba3cd204d5b05fec70ce08fa9fa0dd612409ff.png","tv_发财":"34db290afd2963723c6eb3c4560667db7253a21a.png","tv_可爱":"9e55fd9b500ac4b96613539f1ce2f9499e314ed9.png","tv_吐血":"09dd16a7aa59b77baa1155d47484409624470c77.png","tv_呆":"fe1179ebaa191569b0d31cecafe7a2cd1c951c9d.png","tv_呕吐":"9f996894a39e282ccf5e66856af49483f81870f3.png","tv_困":"241ee304e44c0af029adceb294399391e4737ef2.png","tv_坏笑":"1f0b87f731a671079842116e0991c91c2c88645a.png","tv_大佬":"093c1e2c490161aca397afc45573c877cdead616.png","tv_大哭":"23269aeb35f99daee28dda129676f6e9ea87934f.png","tv_委屈":"d04dba7b5465779e9755d2ab6f0a897b9b33bb77.png","tv_害羞":"a37683fb5642fa3ddfc7f4e5525fd13e42a2bdb1.png","tv_尴尬":"7cfa62dafc59798a3d3fb262d421eeeff166cfa4.png","tv_微笑":"70dc5c7b56f93eb61bddba11e28fb1d18fddcd4c.png","tv_思考":"90cf159733e558137ed20aa04d09964436f618a1.png","tv_惊吓":"0d15c7e2ee58e935adc6a7193ee042388adc22af.png","tv_打脸":"56ab10b624063e966bfcb76ea5dc4794d87dfd47.png","tv_抓狂":"fe31c08edad661d63762b04e17b8d5ae3c71a757.png","tv_抠鼻":"c666f55e88d471e51bbd9fab9bb308110824a6eb.png","tv_斜眼笑":"911f987aa8bc1bee12d52aafe62bc41ef4474e6c.png","tv_无奈":"ea8ed89ee9878f2fece2dda0ea8a5dbfe21b5751.png","tv_晕":"5443c22b4d07fb1907ccc610c8e6db254f2461b7.png","tv_流汗":"cead1c351ab8d79e9f369605beb90148db0fbed3.png","tv_流泪":"7e71cde7858f0cd50d74b0264aa26db612a8a167.png","tv_流鼻血":"c32d39db2737f89b904ca32700d140a9241b0767.png","tv_点赞":"f85c354995bd99e28fc76c869bfe42ba6438eff4.png","tv_生气":"26702dcafdab5e8225b43ffd23c94ac1ff932654.png","tv_生病":"8b0ec90e6b86771092a498c54f09fc94621c1900.png","tv_疑问":"0793d949b18d7be716078349c202c15ff166f314.png","tv_白眼":"c1d59f439e379ee50eef488bcb5e5378e5044ea4.png","tv_皱眉":"72ccad6679fea0d14cce648b4d818e09b8ffea2d.png","tv_目瞪口呆":"0b8cb81a68de5d5365212c99375e7ace3e7891b7.png","tv_睡着":"8b196675b53af58264f383c50ad0945048290b33.png","tv_笑哭":"1abc628f6d4f4caf9d0e7800878f4697abbc8273.png","tv_腼腆":"89712c0d4af73e67f89e35cbc518420380a7f6f4.png","tv_色":"61822c7e9aae5da76475e7892534545336b23a6f.png","tv_调侃":"4bc022533ef31544ca0d72c12c808cf4a1cce3e3.png","tv_调皮":"b9c41de8e82dd7a8515ae5e3cb63e898bf245186.png","tv_鄙视":"6e72339f346a692a495b123174b49e4e8e781303.png","tv_闭嘴":"c9e990da7f6e93975e25fd8b70e2e290aa4086ef.png","tv_难过":"87f46748d3f142ebc6586ff58860d0e2fc8263ba.png","tv_馋":"fc7e829b845c43c623c8b490ee3602b7f0e76a31.png","tv_鬼脸":"0ffbbddf8a94d124ca2f54b360bbc04feb6bbfea.png","tv_黑人问号":"45821a01f51bc867da9edbaa2e070410819a95b2.png","tv_鼓掌":"1d21793f96ef4e6f48b23e53e3b9e42da833a0f6.png"},
+      enableQQ: false,
+      path: window.location.pathname,
+    });
+    if ('nick,mail') { valine.config.requiredFields= 'nick,mail'.split(',') }
+  }
+
+  if (typeof Valine === 'function') initValine() 
+  else $.getScript('https://cdn.jsdelivr.net/npm/valine/dist/Valine.min.js', initValine)
+}
+
+if ('Valine' === 'Valine' || !true) {
+  if (true) loadComment(document.querySelector('#vcomment'),loadValine)
+  else setTimeout(() => loadValine(), 0)
+} else {
+  function loadOtherComment () {
+    loadValine()
+  }
+}</script><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div><script src="/js/third-party/activate-power-mode.js"></script><script>POWERMODE.colorful = true;
+POWERMODE.shake = false;
+document.body.addEventListener('input', POWERMODE);
+</script></div></body></html>
